@@ -1,87 +1,120 @@
-/* VOIZEX — motion & interaction */
+/* VOIZEX v3 — motion & interaction */
 
 (function () {
   "use strict";
 
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  /* --- nav background on scroll --- */
+  /* ── nav solid on scroll ─────────────────────── */
   var nav = document.getElementById("nav");
   function onScrollNav() {
-    if (window.scrollY > 40) nav.classList.add("scrolled");
-    else nav.classList.remove("scrolled");
+    nav.classList.toggle("is-solid", window.scrollY > 40);
   }
   window.addEventListener("scroll", onScrollNav, { passive: true });
   onScrollNav();
 
-  /* --- reveal on scroll --- */
-  var revealables = document.querySelectorAll(".reveal, .reveal-line");
+  /* ── reveal on scroll ────────────────────────── */
+  var targets = document.querySelectorAll(".reveal, .reveal-img");
   if ("IntersectionObserver" in window && !reduced) {
-    var io = new IntersectionObserver(
-      function (entries) {
-        entries.forEach(function (e) {
-          if (e.isIntersecting) {
-            e.target.classList.add("in");
-            io.unobserve(e.target);
-          }
-        });
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
-    );
-    revealables.forEach(function (el) { io.observe(el); });
-  } else {
-    revealables.forEach(function (el) { el.classList.add("in"); });
-  }
-
-  /* --- number count-up --- */
-  var counters = document.querySelectorAll("[data-count]");
-  function animateCount(el) {
-    var target = parseFloat(el.getAttribute("data-count"));
-    var decimals = (String(target).split(".")[1] || "").length;
-    var t0 = null;
-    var dur = 1600;
-    function step(t) {
-      if (!t0) t0 = t;
-      var p = Math.min((t - t0) / dur, 1);
-      var eased = 1 - Math.pow(1 - p, 4);
-      el.textContent = (target * eased).toFixed(decimals);
-      if (p < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }
-  if ("IntersectionObserver" in window && !reduced) {
-    var cio = new IntersectionObserver(
-      function (entries) {
-        entries.forEach(function (e) {
-          if (e.isIntersecting) {
-            animateCount(e.target);
-            cio.unobserve(e.target);
-          }
-        });
-      },
-      { threshold: 0.5 }
-    );
-    counters.forEach(function (el) { cio.observe(el); });
-  }
-
-  /* --- gentle parallax on hero / image breaks --- */
-  var pxEls = Array.prototype.slice.call(document.querySelectorAll("[data-parallax]"));
-  if (pxEls.length && !reduced) {
-    var ticking = false;
-    function parallax() {
-      pxEls.forEach(function (el) {
-        var speed = parseFloat(el.getAttribute("data-parallax")) || 0.2;
-        var box = (el.tagName === "IMG" ? el.parentElement : el).getBoundingClientRect();
-        if (box.bottom < 0 || box.top > window.innerHeight) return;
-        var center = box.top + box.height / 2 - window.innerHeight / 2;
-        var img = el.tagName === "IMG" ? el : el.querySelector("img");
-        if (img) img.style.transform = "scale(1.12) translateY(" + (-center * speed * 0.12) + "px)";
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          e.target.classList.add("in");
+          io.unobserve(e.target);
+        }
       });
-      ticking = false;
+    }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
+    targets.forEach(function (t) { io.observe(t); });
+  } else {
+    targets.forEach(function (t) { t.classList.add("in"); });
+  }
+
+  /* ── glitch: wrap digits already baked into copy ─ */
+  document.querySelectorAll("[data-glitch-hold]").forEach(function (el) {
+    el.innerHTML = el.innerHTML.replace(/[0-9]/g, function (d) {
+      return '<span class="gx">' + d + "</span>";
+    });
+  });
+
+  /* ── glitch: cycling letter swap (hero) ──────── */
+  var GLYPHS = "01479X#%&$@";
+  document.querySelectorAll("[data-glitch]").forEach(function (el) {
+    var text = el.textContent;
+    el.innerHTML = "";
+    var spans = [];
+    text.split("").forEach(function (ch) {
+      var s = document.createElement("span");
+      s.textContent = ch;
+      el.appendChild(s);
+      if (/[a-zA-Z]/.test(ch)) spans.push(s);
+    });
+    if (reduced || !spans.length) return;
+    setInterval(function () {
+      var s = spans[Math.floor(Math.random() * spans.length)];
+      var orig = s.textContent;
+      s.classList.add("gx");
+      s.textContent = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+      setTimeout(function () {
+        s.classList.remove("gx");
+        s.textContent = orig;
+      }, 260);
+    }, 1400);
+  });
+
+  /* ── mantra: light lines up as they pass center ─ */
+  var mantraLines = document.querySelectorAll("[data-mantra] p");
+  if (mantraLines.length) {
+    if (reduced) {
+      mantraLines.forEach(function (p) { p.classList.add("is-lit"); });
+    } else {
+      var mio = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          e.target.classList.toggle("is-lit", e.isIntersecting);
+        });
+      }, { rootMargin: "-38% 0px -38% 0px" });
+      mantraLines.forEach(function (p) { mio.observe(p); });
     }
-    window.addEventListener("scroll", function () {
-      if (!ticking) { requestAnimationFrame(parallax); ticking = true; }
-    }, { passive: true });
-    parallax();
+  }
+
+  /* ── material swatches → tint the set image ──── */
+  var setImage = document.getElementById("setImage");
+  var FILTERS = {
+    titanium: "none",
+    gold: "sepia(0.35) saturate(1.25) hue-rotate(-8deg)",
+    platinum: "saturate(0.55) brightness(1.04)"
+  };
+  document.querySelectorAll(".swatch").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".swatch").forEach(function (b) {
+        b.classList.remove("is-active");
+      });
+      btn.classList.add("is-active");
+      if (setImage) setImage.style.filter = FILTERS[btn.dataset.material] || "none";
+    });
+  });
+
+  /* ── stat count-up ───────────────────────────── */
+  var stats = document.querySelectorAll(".stat-value[data-count]");
+  if ("IntersectionObserver" in window && !reduced) {
+    var sio = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        sio.unobserve(e.target);
+        var el = e.target;
+        var end = parseFloat(el.dataset.count);
+        var decimals = (el.dataset.count.split(".")[1] || "").length;
+        var textNode = el.firstChild; /* number precedes any <i> suffix */
+        var t0 = null;
+        function step(ts) {
+          if (!t0) t0 = ts;
+          var p = Math.min((ts - t0) / 1100, 1);
+          var eased = 1 - Math.pow(1 - p, 3);
+          textNode.nodeValue = (end * eased).toFixed(decimals);
+          if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      });
+    }, { threshold: 0.5 });
+    stats.forEach(function (s) { sio.observe(s); });
   }
 })();
