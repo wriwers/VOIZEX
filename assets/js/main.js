@@ -76,23 +76,6 @@
     }
   }
 
-  /* ── material swatches → tint the set image ──── */
-  var setImage = document.getElementById("setImage");
-  var FILTERS = {
-    titanium: "none",
-    gold: "sepia(0.35) saturate(1.25) hue-rotate(-8deg)",
-    platinum: "saturate(0.55) brightness(1.04)"
-  };
-  document.querySelectorAll(".swatch").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      document.querySelectorAll(".swatch").forEach(function (b) {
-        b.classList.remove("is-active");
-      });
-      btn.classList.add("is-active");
-      if (setImage) setImage.style.filter = FILTERS[btn.dataset.material] || "none";
-    });
-  });
-
   /* ── stat count-up ───────────────────────────── */
   var stats = document.querySelectorAll(".stat-value[data-count]");
   if ("IntersectionObserver" in window && !reduced) {
